@@ -8,11 +8,11 @@
 	pdf_name ='Salary Slip.pdf'
 	filename = pdf_path+pdf_name
 	pdfkit.from_string(str_html,filename)
-	fs = FileSystemStorage()
+	fs = FileSystemStorage() # Save the Pdf with str_html content and filename Namae
 	lst_encoded_string=[]
 	if fs.exists(filename):
 	    with fs.open(filename) as pdf:
-		lst_encoded_string.append(str(base64.b64encode(pdf.read())))
+		lst_encoded_string.append(str(base64.b64encode(pdf.read()))) # Used to Download
 	file_details = {}
 	file_details['file'] = lst_encoded_string
 	file_details['file_name'] = pdf_name
