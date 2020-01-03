@@ -1,0 +1,34 @@
+1.Create PDF
+
+	import pdfkit
+	import base64
+	import os
+
+	pdf_path = settings.MEDIA_ROOT+'/'
+	pdf_name ='Salary Slip.pdf'
+	filename = pdf_path+pdf_name
+	pdfkit.from_string(str_html,filename)
+	fs = FileSystemStorage()
+	lst_encoded_string=[]
+	if fs.exists(filename):
+	    with fs.open(filename) as pdf:
+		lst_encoded_string.append(str(base64.b64encode(pdf.read())))
+	file_details = {}
+	file_details['file'] = lst_encoded_string
+	file_details['file_name'] = pdf_name
+	return Response({"status":"success","file":file_details})
+
+2.Number to Word Conversion
+
+	import num2words
+	
+	str_amount_words = num2words.num2words(dct_data['Net_Salary']).title().split("Point")
+        if len(str_amount_words)==2:
+            str_amount_words=str_amount_words[0]+" Rupees and "+str_amount_words[1]+" Paise only/-"
+        else:
+            str_amount_words=str_amount_words[0] +" Rupees only/-"
+
+3. SQL Query
+	SELECT ud.user_ptr_id AS int_emp_id, ud.vchr_employee_code, CONCAT(au.first_name, ' ', CASE WHEN ud.vchr_middle_name IS NOT NULL THEN CONCAT(ud.vchr_middle_name, ' ', au.last_name) ELSE au.last_name END) AS str_emp_name, cat.vchr_name AS str_category_name, struct.vchr_name AS str_structure, (CASE WHEN ud.dbl_gross IS NOT NULL THEN ud.dbl_gross ELSE 0 END) AS dbl_gross, (CASE WHEN vrblpy.dbl_amount IS NOT NULL THEN vrblpy.dbl_amount ELSE 0 END) AS dbl_variable_pay, ud.json_allowance, struct.dbl_bp_da, struct.dbl_bp_da_per, struct.dbl_da, struct.json_rules, (CASE WHEN slryadv.dbl_amount IS NOT NULL THEN slryadv.dbl_amount ELSE 0 END) AS dbl_adv_amount, londtls.pk_bint_id AS int_loan_details_id, (CASE WHEN londtls.dbl_amount IS NOT NULL THEN londtls.dbl_amount ELSE 0 END) AS dbl_loan_amount, lonrqst.bln_mob_loan AS bln_mob_loan, slrydtl.dbl_bp, slrydtl.dbl_da, slrydtl.dbl_hra, slrydtl.dbl_cca, slrydtl.dbl_sa, slrydtl.dbl_wa, slrydtl.json_deduction, slrydtl.json_allowance, ((CASE WHEN emplv.dbl_number IS NOT NULL THEN emplv.dbl_number ELSE 0 END) + (CASE WHEN lshrplcy.dbl_days IS NULL THEN 0 ELSE lshrplcy.dbl_days END) + SUM(CASE WHEN plog.dat_punch IS NULL AND wkoff.pk_bint_id IS NULL AND hldy.pk_bint_id IS NULL AND lev.pk_bint_id IS NULL THEN 1 WHEN lev.pk_bint_id IS NOT NULL AND levtyp.vchr_name IN ({0}) THEN (CASE WHEN plog.dur_active < (CASE WHEN shft.time_half_day IS NOT NULL THEN shft.time_half_day::INTERVAL WHEN shft.time_full_day IS NOT NULL THEN (shft.time_full_day::INTERVAL)/2 WHEN shft.time_shed_hrs IS NOT NULL THEN (shft.time_shed_hrs::INTERVAL)/2 ELSE (shft.time_shift_to-shft.time_shift_from)/2 END) THEN 1 WHEN plog.dur_active < (CASE WHEN shft.time_full_day IS NOT NULL THEN shft.time_full_day::INTERVAL WHEN shft.time_shed_hrs IS NOT NULL THEN shft.time_shed_hrs::INTERVAL ELSE (shft.time_shift_to-shft.time_shift_from) END) THEN 0.5 ELSE 0 END) END)) AS leave,br.vchr_name,dept.vchr_name,jp.vchr_name,ud.dat_doj,ud.vchr_esi_no FROM auth_user au JOIN user_details ud ON ud.user_ptr_id = au.id JOIN category cat ON cat.pk_bint_id = ud.fk_category_id JOIN salary_structure struct ON struct.pk_bint_id = ud.fk_salary_struct_id AND struct.bln_active = TRUE LEFT JOIN salary_details slrydtl ON slrydtl.fk_employee_id = ud.user_ptr_id AND slrydtl.int_status = 1 LEFT JOIN salary_advance slryadv ON slryadv.fk_employee_id = ud.user_ptr_id AND slryadv.int_month = 1 AND slryadv.int_year = 2020 AND slryadv.int_status = 2 LEFT JOIN variable_pay vrblpy ON vrblpy.fk_employee_id = ud.user_ptr_id AND vrblpy.int_month = {1} AND vrblpy.int_year = {2} AND vrblpy.int_status = 1 LEFT JOIN loan_request lonrqst ON lonrqst.fk_employee_id = ud.user_ptr_id AND lonrqst.int_status = 1 LEFT JOIN loan_details londtls ON londtls.fk_request_id = lonrqst.pk_bint_id AND londtls.int_month = {1} AND londtls.int_year = {2} AND londtls.int_status = 0 RIGHT JOIN (SELECT (GENERATE_SERIES('{3}'::DATE, '{4}'::DATE, '1 day'::INTERVAL)::DATE) AS dat_punch) AS sris ON TRUE LEFT JOIN punching_emp pemp ON pemp.fk_user_id = ud.user_ptr_id LEFT JOIN punch_log plog ON plog.fk_punchingemp_id = pemp.pk_bint_id AND plog.dat_punch = sris.dat_punch LEFT JOIN shift_schedule shft ON shft.pk_bint_id = plog.fk_shift_id LEFT JOIN leave lev ON lev.fk_user_id = ud.user_ptr_id AND lev.dat_from >= sris.dat_punch and lev.dat_to <= sris.dat_punch AND lev.int_status = 2 LEFT JOIN leave_type levtyp ON levtyp.pk_bint_id = lev.fk_leave_type_id LEFT JOIN emp_leave_data emplv ON emplv.fk_employee_id = ud.user_ptr_id AND emplv.int_status = 1 AND emplv.int_month = {1} AND emplv.int_year = {2} LEFT JOIN less_hour_leave lshrlv ON lshrlv.fk_employee_id = ud.user_ptr_id AND lshrlv.dat_leave = sris.dat_punch LEFT JOIN less_hour_deduction lshrde ON lshrde.fk_employee_id = ud.user_ptr_id AND lshrde.int_month = {1} AND lshrde.int_year = {2} LEFT JOIN less_hour_details lshrdtl ON lshrdtl.fk_master_id = lshrde.pk_bint_id AND lshrdtl.dat_less_hour = sris.dat_punch LEFT JOIN less_hour_policy lshrplcy ON lshrplcy.dur_from <= (CASE WHEN lshrde.dur_aftr_deduct IS NOT NULL THEN lshrde.dur_aftr_deduct ELSE lshrde.dur_time END) AND lshrplcy.dur_to >= (CASE WHEN lshrde.dur_aftr_deduct IS NOT NULL THEN lshrde.dur_aftr_deduct ELSE lshrde.dur_time END) LEFT JOIN duty_roster wkoff ON ud.int_weekoff_type=1 AND wkoff.fk_employee_id=ud.user_ptr_id AND wkoff.bln_active=TRUE AND wkoff.json_dates ? sris.dat_punch::TEXT LEFT JOIN holiday hldy ON hldy.dat_holiday = sris.dat_punch AND hldy.bln_active = TRUE LEFT JOIN department dept ON ud.fk_department_id = dept.pk_bint_id LEFT JOIN job_position jp ON ud.fk_desig_id = jp.pk_bint_id LEFT JOIN branch br ON ud.fk_branch_id = br.pk_bint_id  WHERE (au.is_active = TRUE OR (au.is_active = FALSE AND ud.dat_resignation>='{3}'::DATE)){5} GROUP BY int_emp_id, ud.vchr_employee_code, str_emp_name, str_category_name, str_structure, ud.dbl_gross, dbl_variable_pay, ud.json_allowance, struct.dbl_bp_da, struct.dbl_bp_da_per, struct.dbl_da, struct.json_rules, emplv.dbl_number, lshrplcy.dbl_days, dbl_adv_amount, int_loan_details_id, dbl_loan_amount, lonrqst.bln_mob_loan, slrydtl.dbl_bp, slrydtl.dbl_da, slrydtl.dbl_hra, slrydtl.dbl_cca, slrydtl.dbl_sa, slrydtl.dbl_wa, slrydtl.json_deduction, slrydtl.json_allowance, lshrplcy.dbl_days,br.vchr_name,dept.vchr_name,jp.vchr_name,ud.dat_doj,ud.vchr_esi_no ORDER BY TRIM(TRIM(TRIM(ud.vchr_employee_code,'MYGC-'),'MYGE-'),'MYGT-')::INT
+
+
